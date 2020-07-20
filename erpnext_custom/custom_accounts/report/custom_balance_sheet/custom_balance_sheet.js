@@ -10,6 +10,26 @@ frappe.require("assets/erpnext/js/financial_statements.js", function() {
 
 	erpnext.utils.add_dimensions('Custom Balance Sheet', 10);
 
+
+	frappe.query_reports["Custom Balance Sheet"]["filters"].push({
+		"fieldname":"period_start_date",
+		"label": __("Start Date"),
+		"fieldtype": "Date",
+		"hidden":0 ,
+		"reqd": 1,
+		default: frappe.defaults.get_user_default("year_start_date")
+	});
+
+
+	frappe.query_reports["Custom Balance Sheet"]["filters"].push({
+		"fieldname":"period_end_date",
+		"label": __("End Date"),
+		"fieldtype": "Date",
+		"hidden": 0,
+		"reqd": 0,
+		default: frappe.datetime.get_today()
+	});
+
 	frappe.query_reports["Custom Balance Sheet"]["filters"].push({
 		"fieldname": "accumulated_values",
 		"label": __("Accumulated Values"),
@@ -25,9 +45,7 @@ frappe.require("assets/erpnext/js/financial_statements.js", function() {
 	});
 
 	let filters = frappe.query_reports["Custom Balance Sheet"]["filters"];
-	filters = toggle(filters, ["filter_based_on","from_fiscal_year","to_fiscal_year"],true)
-	frappe.query_reports["Custom Balance Sheet"]["filters"] = toggle(filters, ["period_start_date","period_end_date"],false)
-
+	frappe.query_reports["Custom Balance Sheet"]["filters"] = toggle(filters, ["filter_based_on","from_fiscal_year","to_fiscal_year","periodicity"],true);
 
 });
 
