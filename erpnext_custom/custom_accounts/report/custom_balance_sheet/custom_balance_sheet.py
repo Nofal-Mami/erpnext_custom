@@ -9,11 +9,56 @@ from frappe.utils import flt, cint
 from erpnext.accounts.report.financial_statements import (get_period_list, get_columns, get_data)
 from datetime import datetime
 
+from six import itervalues
+
 def execute(filters=None):
+
+	def get_accounts_matched_account_number(company, accounts):
+		accounts_codes = str(accounts).split(" ")
+		account_matches = dict(debit=[], credit=[])
+
+		for account_match in accounts_codes:
+			if account_match.startswith("+"):
+				account_matches.get('debit').extend(get_accounts_with_account_number(company, account_match[1:]))
+			elif account_match.startswith("-"):
+				account_matches.get('credit').extend(get_accounts_with_account_number(company, account_match[1:]))
+
+		return account_matches
+
+	def get_accounts_with_account_number(company, match):
+		accounts = frappe.db.sql("""
+				select name from `tabAccount` where company=%s and is_group = 0 and account_number LIKE %s order by lft""",
+								 (company, match + "%"), as_dict=True)
+
+		return accounts
+
+	def remove_group_accounts(grouper):
+		grouper = {key: value for (key, value) in grouper.items() if value.is_group == 0}
+
+
+	def compute_from_grouper(grouper,accounts,period_list):
+		value_current_year = 0
+		value_previous_year = 0
+		for	account in accounts.get("debit"):
+			acc = grouper.get(account.get("name"))
+			if acc is not None:
+				value_previous_year += acc.get("%s_debit" % period_list[0].get('key'),0.0)
+				value_current_year += acc.get("%s_debit" % period_list[1].get('key'),0.0)
+
+		for	account in accounts.get("credit"):
+			acc = grouper.get(account.get("name"))
+			if acc is not None:
+				value_previous_year += acc.get("%s_credit" % period_list[0].get('key'), 0.0)
+				value_current_year += acc.get("%s_credit" % period_list[1].get('key'), 0.0)
+
+		return (value_previous_year,value_current_year)
+
+
+
 
 	# get previous fiscal year from filter
 	period_list = get_period_list(int(filters.to_fiscal_year) - 1, filters.to_fiscal_year,filters.periodicity, company=filters.company)
-	frappe.errprint(period_list)
+
 
 	currency = filters.presentation_currency or frappe.get_cached_value('Company',  filters.company,  "default_currency")
 
@@ -23,22 +68,88 @@ def execute(filters=None):
 		current_year_from_date.to_date = datetime.strptime(filters.period_end_date, '%Y-%m-%d').date()
 		period_list[len(period_list) - 1] = current_year_from_date
 
-	asset = get_data(filters.company, "Asset", "Debit", period_list,
+	grouper = {}
+
+	asset = get_data(filters.company, "Asset", "Debit", period_list, grouper,
 		only_current_fiscal_year=False, filters=filters,
 		accumulated_values=filters.accumulated_values)
 
 
-	liability = get_data(filters.company, "Liability", "Credit", period_list,
+	liability = get_data(filters.company, "Liability", "Credit", period_list,grouper,
 		only_current_fiscal_year=False, filters=filters,
 		accumulated_values=filters.accumulated_values)
 
-	equity = get_data(filters.company, "Equity", "Credit", period_list,
+	equity = get_data(filters.company, "Equity", "Credit", period_list,grouper,
 		only_current_fiscal_year=False, filters=filters,
 		accumulated_values=filters.accumulated_values)
 
-	frappe.errprint(asset)
-	frappe.errprint(liability)
-	frappe.errprint(equity)
+	# grouper now hold leaf accounts that have credit and debit balance for current date and last fiscal year
+	# at a little cost
+
+	# Asset get debit balance of all specified accounts
+	# Liability get the credit balance of all specified accounts
+	remove_group_accounts(grouper)
+
+
+
+	configuration = frappe.get_doc('Financial Report Configuration', "BSH002")
+	grouping, group = dict(), None
+
+	indexes = 0
+	for (index, config) in enumerate(configuration.get("financial_report_configuration_item")):
+		# to be sorted by serial number
+
+		group = config.get('label') if config.get('type') == 'H1' or group is None else group
+
+		if config.get('type') == 'H1':
+			grouped_index = 0
+			indexes = 0
+			grouping[group] = {}
+
+		if config.get('accounts') is None:
+			grouping[group].update({
+				config.get('label'): dict(
+					tag=config.get('type'),
+					title=config.get('label'),
+					index = grouped_index
+				)
+			})
+			grouped_index = grouped_index + 1
+
+		elif str(config.get('accounts')).find("L") is not -1:
+
+			total_previous_year = 0
+			total_current_year = 0
+
+			codes = str(config.get('accounts')).split(" ")
+			for code in codes:
+				index_ = int(str(code[2:]))
+				account_at_index = grouping[group].get("L%s" % index_)
+				if account_at_index:
+					total_previous_year = total_previous_year + account_at_index.get('value')[0]
+					total_current_year = total_current_year +  account_at_index.get('value')[1]
+
+			account_ = dict(
+				tag=config.get('type'),
+				title=config.get('label'),
+				value=(total_previous_year,total_current_year),
+				index=3.5,
+			)
+			grouped_index = grouped_index + 1
+			grouping[group].update({config.get('label'): account_})
+
+		else:
+			account_ = dict(
+				tag=config.get('type'),
+				title=config.get('label'),
+				index=3.5,
+				value = compute_from_grouper(grouper, get_accounts_matched_account_number(filters.company,
+												 config.get('accounts')),period_list)
+			)
+			grouped_index = grouped_index + 1
+			grouping[group].update({ "L%s" % indexes : account_})
+			indexes = indexes + 1
+
 
 	provisional_profit_loss, total_credit = get_provisional_profit_loss(asset, liability, equity,
 		period_list, filters.company, currency)
@@ -49,6 +160,7 @@ def execute(filters=None):
 	data.extend(asset or [])
 	data.extend(liability or [])
 	data.extend(equity or [])
+
 	if opening_balance and round(opening_balance,2) !=0:
 		unclosed ={
 			"account_name": "'" + _("Unclosed Fiscal Years Profit / Loss (Credit)") + "'",
@@ -73,6 +185,13 @@ def execute(filters=None):
 
 	report_summary = get_report_summary(period_list, asset, liability, equity, provisional_profit_loss,
 		total_credit, currency, filters)
+
+	print_data = []
+	for group in itervalues(grouping):
+		for item in itervalues(group):
+			print_data.append(item)
+
+	data.append({ "print_data" : print_data})
 
 	return columns, data, message, None, report_summary
 

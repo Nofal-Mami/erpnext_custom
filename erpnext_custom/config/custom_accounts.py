@@ -8,9 +8,12 @@ def get_data():
             "label": _("Report"),
             "items": [
                 {
-                    "type": "report",
                     "name": "Custom Balance Sheet",
-                    "label": "Balance Sheet"
+                    "modules": "Custom Accounts",
+                    "label": "Tunisia Balance Sheet",
+                    "type": "report",
+                    "is_query_report": True,
+                    "doctype": 'GL Entry',
                 },
             ]
         },
