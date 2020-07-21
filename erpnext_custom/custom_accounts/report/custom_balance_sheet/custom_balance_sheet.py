@@ -6,10 +6,15 @@ from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import flt, cint
-from erpnext.accounts.report.financial_statements import (get_period_list, get_columns, get_data)
+
+from erpnext.accounts.report.financial_statements import (get_period_list, get_columns,get_accounts,filter_accounts,
+														  get_appropriate_currency,set_gl_entries_by_account,
+														  accumulate_values_into_parents,accumulate_values_into_parents,
+														  prepare_data,add_total_row,filter_out_zero_value_rows)
 from datetime import datetime
 
 from six import itervalues
+
 
 def execute(filters=None):
 
@@ -304,3 +309,77 @@ def get_report_summary(period_list, asset, liability, equity, provisional_profit
 			"currency": currency
 		}
 	]
+
+
+
+
+def get_data(
+		company, root_type, balance_must_be, period_list, grouper, filters=None,
+		accumulated_values=1, only_current_fiscal_year=True, ignore_closing_entries=False,
+		ignore_accumulated_values_for_fy=False , total = True):
+
+
+	accounts = get_accounts(company, root_type)
+
+	if not accounts:
+		return None
+
+	accounts, accounts_by_name, parent_children_map = filter_accounts(accounts)
+
+	company_currency = get_appropriate_currency(company, filters)
+
+	gl_entries_by_account = {}
+
+	for root in frappe.db.sql("""select lft, rgt from tabAccount
+			where root_type=%s and ifnull(parent_account, '') = ''""", root_type, as_dict=1):
+
+		set_gl_entries_by_account(
+			company,
+			period_list[0]["year_start_date"] if only_current_fiscal_year else None,
+			period_list[-1]["to_date"],
+			root.lft, root.rgt, filters,
+			gl_entries_by_account, ignore_closing_entries=ignore_closing_entries
+		)
+	calculate_values(
+		accounts_by_name, gl_entries_by_account, period_list, accumulated_values, ignore_accumulated_values_for_fy)
+
+	grouper.update(accounts_by_name)
+
+	accumulate_values_into_parents(accounts, accounts_by_name, period_list, accumulated_values)
+
+	out = prepare_data(accounts, balance_must_be, period_list, company_currency)
+
+	out = filter_out_zero_value_rows(out, parent_children_map)
+
+	if out and total:
+		add_total_row(out, root_type, balance_must_be, period_list, company_currency)
+
+	return out
+
+
+
+def calculate_values(
+		accounts_by_name, gl_entries_by_account, period_list, accumulated_values, ignore_accumulated_values_for_fy):
+
+	for entries in itervalues(gl_entries_by_account):
+		for entry in entries:
+			d = accounts_by_name.get(entry.account)
+			if not d:
+				frappe.msgprint(
+					_("Could not retrieve information for {0}.".format(entry.account)), title="Error",
+					raise_exception=1
+				)
+			for period in period_list:
+				# check if posting date is within the period
+				if entry.posting_date <= period.to_date:
+					if (accumulated_values or entry.posting_date >= period.from_date) and \
+						(not ignore_accumulated_values_for_fy or
+							entry.fiscal_year == period.to_date_fiscal_year):
+
+						d[period.key] = d.get(period.key, 0.0) + flt(entry.debit) - flt(entry.credit)
+						d[period.key+"_debit"] = d.get(period.key+"_debit", 0.0) + flt(entry.debit)
+						d[period.key+"_credit"] = d.get(period.key+"_credit", 0.0) + flt(entry.credit)
+
+
+			if entry.posting_date < period_list[0].year_start_date:
+				d["opening_balance"] = d.get("opening_balance", 0.0) + flt(entry.debit) - flt(entry.credit)
