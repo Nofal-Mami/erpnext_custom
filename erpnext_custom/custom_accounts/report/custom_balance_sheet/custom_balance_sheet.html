@@ -20,48 +20,66 @@
 	let currency =  filters.presentation_currency || erpnext.get_currency(filters.company);
 %}
 
-<h1 class="text-left">{%= __("Tunisia Balance Sheet") %}</h1>
+<div style="padding-left: 0.4em">
+	<h3 class="text-center" >{%= __("BILAN") %}</h3>
+	<p  class="text-center">(Exprime en dinars)</p>
+	<p class="text-center">Au {%= new Date(filters.period_end_date).toUTCString() %}</p>
 
-<br>
-<br>
+	<br>
+	<br>
+	{% for(var o=0, l=data[data.length - 1]['print_data']; o < l.length; o++) { %}
+	<table style="margin-bottom: 10em">
 
-<table>
-	<tr>
-		<td></td>
-		<td>
-			<div>
-				<b style=" margin-right:2em; font-weight: bold;">2019</b>
-				<b style=" font-weight: bold;">2020</b>
-			</div>
-			<hr/>
-		</td>
-	</tr>
-
-	{% for(var i=0, l=data[data.length - 1]['print_data']; i<l.length; i++) { %}
-	{%
-		let row = l[i];
-	%}
-	<tr>
-		<td>
-			<{%= row['tag'] %} style='padding-left:calc(20px * {%= row['index'] %} )'>  {%= row['title'] %}</{%= row['tag'] %}>
-		</td>
-		<td>
-			{% if (!is_null(row['value'])) { %}
+		<tr>
+			<td style="vertical-align: center; width: 500px"></td>
+			<td style="vertical-align: center;width: 100px">Notes</td>
+			<td style="vertical-align: center;width: 400px">
 				<div>
-					<b style="margin-right:2em; font-weight: bold;">{%= format_currency(row['value'][0], filters.presentation_currency)  %}</b>
-					<b style="font-weight: bold;">{%= format_currency(row['value'][1], filters.presentation_currency) %}</b>
+					<small>Exercice clos<br>  au {%= new Date(filters.period_end_date).toUTCString() %}</small>
+					<br>
+					<b style=" margin-right:3em; font-weight: bold;">N</b>
+					<b style=" font-weight: bold;">N + 1</b>
 				</div>
-			<hr/>
-			{% } %}
-		</td>
+				<hr/>
+			</td>
+		</tr>
 
+		{%  let group = l[o];  %}
+		{% for(var i=0; i < group.length; i++) { %}
+		<tr>
+			<td style="width: 500px">
+				{%  let row = group[i];  %}
+				<{%= row['tag'] %} style='padding-left:calc(20px * {%= row['index'] %} )'>  {%= row['title'] %}</{%= row['tag'] %}>
 
-	</tr>
+			</td>
+			<td style="width: 100px"></td>
+			<td style="width: 400px">
+				{% if (!is_null(row['value'])) { %}
+					<div>
+						{% if ( Math.sign(row['value'][0]) != "-1") { %}
+							<b style="margin-right:3em; font-weight: bold;">{%= format_currency(row['value'][0], filters.presentation_currency)  %}</b>
+						{% } else { %}
+							<b style="font-weight: bold;">( {%= format_currency(row['value'][0], filters.presentation_currency)  %} )</b>
+						{% } %}
+
+						{% if ( Math.sign(row['value'][1]) != "-1") { %}
+							<b style="margin-right:3em; font-weight: bold;">{%= format_currency(row['value'][1], filters.presentation_currency)  %}</b>
+						{% } else { %}
+							<b style="font-weight: bold;">( {%= format_currency(row['value'][1], filters.presentation_currency)  %} )</b>
+						{% } %}
+					</div>
+				<hr/>
+				{% } %}
+			</td>
+		</tr>
+		{% } %}
+	</table>
 	{% } %}
-</table>
+	<br>
+	<br>
 
-<br>
+	<p class="text-left text-muted">
+		Printed On {%= frappe.datetime.str_to_user(frappe.datetime.get_datetime_as_string()) %}
+	</p>
 
-<p class="text-left text-muted">
-	Printed On {%= frappe.datetime.str_to_user(frappe.datetime.get_datetime_as_string()) %}
-</p>
+</div>

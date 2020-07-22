@@ -94,7 +94,7 @@ def execute(filters=None):
 	# Asset get debit balance of all specified accounts
 	# Liability get the credit balance of all specified accounts
 	remove_group_accounts(grouper)
-	configuration = frappe.get_doc('Financial Report Configuration', "BSH002")
+	configuration = frappe.get_doc('Financial Report Configuration', {"report_code": "Bilan_TN"})
 	grouping, group = dict(), None
 
 	indexes = 0
@@ -113,7 +113,7 @@ def execute(filters=None):
 				config.get('label'): dict(
 					tag=config.get('type'),
 					title=config.get('label'),
-					index = grouped_index
+					index=grouped_index
 				)
 			})
 			grouped_index = grouped_index + 1
@@ -138,8 +138,8 @@ def execute(filters=None):
 				index=3.5,
 			)
 			grouped_index = grouped_index + 1
-			grouping[group].update({config.get('label'): account_})
-
+			grouping[group].update({"L%s" % indexes: account_})
+			indexes = indexes + 1
 		else:
 			account_ = dict(
 				tag=config.get('type'),
@@ -188,12 +188,7 @@ def execute(filters=None):
 	report_summary = get_report_summary(period_list, asset, liability, equity, provisional_profit_loss,
 		total_credit, currency, filters)
 
-	print_data = []
-	for group in itervalues(grouping):
-		for item in itervalues(group):
-			print_data.append(item)
-
-	data.append({ "print_data" : print_data})
+	data.append({ "print_data" : [itervalues(iter)for iter in itervalues(grouping)] })
 
 	return columns, data, message, None, report_summary
 
@@ -306,8 +301,6 @@ def get_report_summary(period_list, asset, liability, equity, provisional_profit
 			"currency": currency
 		}
 	]
-
-
 
 
 def get_data(
