@@ -375,3 +375,5 @@ def calculate_values(
 
 				if entry.posting_date < period_list[0].year_start_date:
 					d["opening_balance"] = d.get("opening_balance", 0.0) + flt(entry.debit) - flt(entry.credit)
+			else :
+			 del d
