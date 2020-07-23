@@ -41,7 +41,7 @@ def execute(filters=None):
 		grouper = {key: value for (key, value) in grouper.items() if value.is_group == 0}
 
 
-	def compute_from_grouper(grouper,accounts,period_list):
+	def compute_from_grouper_old(grouper,accounts,period_list):
 		value_current_year = 0
 		value_previous_year = 0
 		for	account in accounts.get("debit"):
@@ -58,6 +58,49 @@ def execute(filters=None):
 
 		return (value_previous_year,value_current_year)
 
+	def compute_from_grouper(grouper,accounts,period_list):
+		value_current_year = 0
+		value_previous_year = 0
+
+		for	account in accounts.get("debit"):
+			acc = grouper.get(account.get("name"))
+			frappe.errprint(acc)
+			if acc is not None:
+				value_previous_year_d = acc.get("%s_debit" % period_list[0].get('key'), 0.0)
+				value_previous_year_c = acc.get("%s_credit" % period_list[0].get('key'), 0.0)
+
+				value_current_year_d = acc.get("%s_debit" % period_list[1].get('key'), 0.0)
+				value_current_year_c = acc.get("%s_credit" % period_list[1].get('key'), 0.0)
+
+				diff_value_previous_year = value_previous_year_d - value_previous_year_c
+				diff_value_current_year = value_current_year_d - value_current_year_c
+
+				if diff_value_previous_year >= 0:
+					value_previous_year += diff_value_previous_year
+
+				if diff_value_current_year >= 0:
+					value_current_year += diff_value_current_year
+
+		for	account in accounts.get("credit"):
+			acc = grouper.get(account.get("name"))
+			if acc is not None:
+				value_previous_year_d = acc.get("%s_debit" % period_list[0].get('key'), 0.0)
+				value_previous_year_c = acc.get("%s_credit" % period_list[0].get('key'), 0.0)
+
+				value_current_year_d = acc.get("%s_debit" % period_list[1].get('key'), 0.0)
+				value_current_year_c = acc.get("%s_credit" % period_list[1].get('key'), 0.0)
+
+				diff_value_previous_year = value_previous_year_d - value_previous_year_c
+				diff_value_current_year = value_current_year_d - value_current_year_c
+
+				if diff_value_previous_year < 0:
+					value_previous_year += diff_value_previous_year
+
+				if diff_value_current_year < 0:
+					value_current_year += diff_value_current_year
+
+
+		return (value_previous_year,value_current_year)
 
 	period_list = get_period_list(int(filters.to_fiscal_year) - 1, filters.to_fiscal_year,filters.periodicity, company=filters.company)
 

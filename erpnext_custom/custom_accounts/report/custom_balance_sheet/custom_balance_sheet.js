@@ -7,7 +7,6 @@
 
 frappe.require("assets/erpnext/js/financial_statements.js", function() {
 
-console.log(frappe.query_reports)
 	frappe.query_reports["Custom Balance Sheet"] = $.extend({}, erpnext.financial_statements);
 
 	erpnext.utils.add_dimensions('Custom Balance Sheet', 10);
