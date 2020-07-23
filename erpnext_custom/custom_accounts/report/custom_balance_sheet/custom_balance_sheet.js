@@ -6,9 +6,26 @@
 // License: GNU General Public License v3. See license.txt
 
 frappe.require("assets/erpnext/js/financial_statements.js", function() {
+
+console.log(frappe.query_reports)
 	frappe.query_reports["Custom Balance Sheet"] = $.extend({}, erpnext.financial_statements);
 
 	erpnext.utils.add_dimensions('Custom Balance Sheet', 10);
+
+	frappe.query_reports["Custom Balance Sheet"].onload =  function(report) {
+		// dropdown for links to other financial statements
+		erpnext.financial_statements.filters = get_filters()
+
+		let fiscal_year = frappe.defaults.get_user_default("fiscal_year")
+
+		frappe.model.with_doc("Fiscal Year", fiscal_year, function (r) {
+			var fy = frappe.model.get_doc("Fiscal Year", fiscal_year);
+			frappe.query_report.set_filter_value({
+				period_start_date: fy.year_start_date,
+				period_end_date: fy.year_end_date
+			});
+		});
+	};
 
 
 	frappe.query_reports["Custom Balance Sheet"]["filters"].push({

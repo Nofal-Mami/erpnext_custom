@@ -23,9 +23,6 @@
 <div style="padding-left: 0.4em">
 	<h3 class="text-center" >{%= __("BILAN") %}</h3>
 	<p  class="text-center">(Exprime en dinars)</p>
-	<p class="text-center">Au {%= new Date(filters.period_end_date).toUTCString() %}</p>
-
-	<br>
 	<br>
 	{% for(var o=0, l=data[data.length - 1]['print_data']; o < l.length; o++) { %}
 	<table style="margin-bottom: 10em">
@@ -35,7 +32,25 @@
 			<td style="vertical-align: center;width: 100px">Notes</td>
 			<td style="vertical-align: center;width: 400px">
 				<div>
-					<small>Exercice clos<br>  au {%= new Date(filters.period_end_date).toUTCString() %}</small>
+					{%
+						let date =  new Date(filters.period_end_date);
+						let months = {
+							1:"janvier",
+							2:"février",
+							3:"mars",
+							4:"avril",
+							5:"mai",
+							6:"juin",
+							7:"juillet",
+							8:"août",
+							9:"septembre",
+							10:"octobre",
+							11:"novembre",
+							12:"décembre",
+						}
+					%}
+
+					<small>Exercice clos<br>  au {%= date.getDay() %}, {%= months[date.getMonth()] %}  {%=filters.to_fiscal_year %}</small>
 					<br>
 					<b style=" margin-right:3em; font-weight: bold;">N</b>
 					<b style=" font-weight: bold;">N + 1</b>

@@ -59,11 +59,7 @@ def execute(filters=None):
 		return (value_previous_year,value_current_year)
 
 
-
-
-	# get previous fiscal year from filter
 	period_list = get_period_list(int(filters.to_fiscal_year) - 1, filters.to_fiscal_year,filters.periodicity, company=filters.company)
-
 
 	currency = filters.presentation_currency or frappe.get_cached_value('Company',  filters.company,  "default_currency")
 
@@ -97,29 +93,35 @@ def execute(filters=None):
 	configuration = frappe.get_doc('Financial Report Configuration', {"report_code": "Bilan_TN"})
 	grouping, group = dict(), None
 
-	indexes = 0
+	indentation = {
+		"H1":2,
+		"H2":2.5,
+		"H3":3,
+		"H4":3.5,
+		"H5":4,
+		"H6":4.5,
+	}
+
 	for (index, config) in enumerate(configuration.get("financial_report_configuration_item")):
 		# to be sorted by serial number
 
 		group = config.get('label') if config.get('type') == 'H1' or group is None else group
 
 		if config.get('type') == 'H1':
-			grouped_index = 0
-			indexes = 0
 			grouping[group] = {}
 
+		index_plus  = index+1
 		if config.get('accounts') is None:
 			grouping[group].update({
-				config.get('label'): dict(
+				"L%s" % index_plus : dict(
 					tag=config.get('type'),
 					title=config.get('label'),
-					index=grouped_index
+					index=indentation.get(config.get('type'))
 				)
 			})
-			grouped_index = grouped_index + 1
+
 
 		elif str(config.get('accounts')).find("L") is not -1:
-
 			total_previous_year = 0
 			total_current_year = 0
 
@@ -127,7 +129,7 @@ def execute(filters=None):
 			for code in codes:
 				index_ = int(str(code[2:]))
 				account_at_index = grouping[group].get("L%s" % index_)
-				if account_at_index:
+				if account_at_index and account_at_index.get('value'):
 					total_previous_year = total_previous_year + account_at_index.get('value')[0]
 					total_current_year = total_current_year +  account_at_index.get('value')[1]
 
@@ -135,23 +137,19 @@ def execute(filters=None):
 				tag=config.get('type'),
 				title=config.get('label'),
 				value=(total_previous_year,total_current_year),
-				index=3.5,
+				index=indentation.get(config.get('type'))
 			)
-			grouped_index = grouped_index + 1
-			grouping[group].update({"L%s" % indexes: account_})
-			indexes = indexes + 1
+
+			grouping[group].update({"L%s" % index_plus: account_})
 		else:
 			account_ = dict(
 				tag=config.get('type'),
 				title=config.get('label'),
-				index=3.5,
+				index=indentation.get(config.get('type')),
 				value = compute_from_grouper(grouper, get_accounts_matched_account_number(filters.company,
 												 config.get('accounts')),period_list)
 			)
-			grouped_index = grouped_index + 1
-			grouping[group].update({ "L%s" % indexes : account_})
-			indexes = indexes + 1
-
+			grouping[group].update({ "L%s" % index_plus: account_})
 
 	provisional_profit_loss, total_credit = get_provisional_profit_loss(asset, liability, equity,
 		period_list, filters.company, currency)
@@ -163,7 +161,7 @@ def execute(filters=None):
 	data.extend(liability or [])
 	data.extend(equity or [])
 
-	if opening_balance and round(opening_balance,2) !=0:
+	if opening_balance and round(opening_balance , 2) !=0:
 		unclosed ={
 			"account_name": "'" + _("Unclosed Fiscal Years Profit / Loss (Credit)") + "'",
 			"account": "'" + _("Unclosed Fiscal Years Profit / Loss (Credit)") + "'",
@@ -175,7 +173,7 @@ def execute(filters=None):
 			if provisional_profit_loss:
 				provisional_profit_loss[period.key] = provisional_profit_loss[period.key] - opening_balance
 
-		unclosed["total"]=opening_balance
+		unclosed["total"] = opening_balance
 		data.append(unclosed)
 
 	if provisional_profit_loss:
