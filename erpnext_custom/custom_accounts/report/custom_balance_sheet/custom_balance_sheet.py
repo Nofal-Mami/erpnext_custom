@@ -64,7 +64,6 @@ def execute(filters=None):
 
 		for	account in accounts.get("debit"):
 			acc = grouper.get(account.get("name"))
-			frappe.errprint(acc)
 			if acc is not None:
 				value_previous_year_d = acc.get("%s_debit" % period_list[0].get('key'), 0.0)
 				value_previous_year_c = acc.get("%s_credit" % period_list[0].get('key'), 0.0)
@@ -138,13 +137,23 @@ def execute(filters=None):
 
 	indentation = {
 		"H1":2,
-		"H2":2.5,
-		"H3":3,
-		"H4":3.5,
-		"H5":4,
-		"H6":4.5,
+		"H2":3,
+		"H3":4,
+		"H4":4.5,
+		"H5":5,
+		"H6":6,
 	}
-
+	#
+	# {'account': '1000 - Application of Funds (Assets) - RS', 'parent_account': '', 'indent': 0.0,
+	#  'year_start_date': '2019-01-01', 'year_end_date': '2020-12-31', 'currency': 'NGN', 'include_in_gross': 0,
+	#  'account_type': '', 'is_group': 1, 'opening_balance': 0.0, 'account_name': '1000 - Application of Funds (Assets)',
+	#  'dec_2019': 200000.0, 'dec_2020': 1380010.0, 'has_value': True, 'total': ''}, {
+	# 	'account': '1100-1600 - Current Assets - RS', 'parent_account': '1000 - Application of Funds (Assets) - RS',
+	# 	'indent': 1.0, 'year_start_date': '2019-01-01', 'year_end_date': '2020-12-31', 'currency': 'NGN',
+	# 	'include_in_gross': 0, 'account_type': '', 'is_group': 1, 'opening_balance': 0.0,
+	# 	'account_name': '1100-1600 - Current Assets', 'dec_2019': 200000.0, 'dec_2020': 1380000.0, 'has_value': True,
+	# 	'total': 1580000.0}
+	#
 	for (index, config) in enumerate(configuration.get("financial_report_configuration_item")):
 		# to be sorted by serial number
 

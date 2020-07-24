@@ -50,7 +50,7 @@
 						}
 					%}
 
-					<small>Exercice clos<br>  au {%= date.getDay() %}, {%= months[date.getMonth()] %}  {%=filters.to_fiscal_year %}</small>
+					<small>Exercice clos<br>  au {%= date.getUTCDate()  %}, {%= months[date.getMonth() + 1] %}  {%=filters.to_fiscal_year %}</small>
 					<br>
 					<b style=" margin-right:3em; font-weight: bold;">N</b>
 					<b style=" font-weight: bold;">N + 1</b>
@@ -74,13 +74,15 @@
 						{% if ( Math.sign(row['value'][0]) != "-1") { %}
 							<b style="margin-right:3em; font-weight: bold;">{%= format_currency(row['value'][0], filters.presentation_currency)  %}</b>
 						{% } else { %}
-							<b style="font-weight: bold;">( {%= format_currency(row['value'][0], filters.presentation_currency)  %} )</b>
+						{%  let value = Math.abs(row['value'][1]) ;  %}
+							<b style="font-weight: bold;">( {%= format_currency(value, filters.presentation_currency)  %} )</b>
 						{% } %}
 
 						{% if ( Math.sign(row['value'][1]) != "-1") { %}
 							<b style="margin-right:3em; font-weight: bold;">{%= format_currency(row['value'][1], filters.presentation_currency)  %}</b>
 						{% } else { %}
-							<b style="font-weight: bold;">( {%= format_currency(row['value'][1], filters.presentation_currency)  %} )</b>
+						{%  let value = Math.abs(row['value'][1]) ;  %}
+							<b style="font-weight: bold;">( {%= format_currency(value, filters.presentation_currency)  %} )</b>
 						{% } %}
 					</div>
 				<hr/>
@@ -91,10 +93,5 @@
 	</table>
 	{% } %}
 	<br>
-	<br>
-
-	<p class="text-left text-muted">
-		Printed On {%= frappe.datetime.str_to_user(frappe.datetime.get_datetime_as_string()) %}
-	</p>
 
 </div>

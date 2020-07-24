@@ -11,6 +11,10 @@ frappe.require("assets/erpnext/js/financial_statements.js", function() {
 
 	erpnext.utils.add_dimensions('Custom Balance Sheet', 10);
 
+
+
+
+
 	frappe.query_reports["Custom Balance Sheet"].onload =  function(report) {
 		// dropdown for links to other financial statements
 		erpnext.financial_statements.filters = get_filters()
@@ -23,6 +27,14 @@ frappe.require("assets/erpnext/js/financial_statements.js", function() {
 				period_start_date: fy.year_start_date,
 				period_end_date: fy.year_end_date
 			});
+		});
+
+		console.log(report.page)
+		report.page.add_inner_button(__("Print"), function() {
+			frappe.ui.get_print_settings(false,
+                        print_settings => frappe.query_report.print_report(print_settings),
+                        frappe.query_report.report_doc.letter_head,
+                        frappe.query_report.get_visible_columns())
 		});
 	};
 
@@ -46,22 +58,10 @@ frappe.require("assets/erpnext/js/financial_statements.js", function() {
 		default: frappe.datetime.get_today()
 	});
 
-	frappe.query_reports["Custom Balance Sheet"]["filters"].push({
-		"fieldname": "accumulated_values",
-		"label": __("Accumulated Values"),
-		"fieldtype": "Check",
-		"default": 1
-	});
-
-	frappe.query_reports["Custom Balance Sheet"]["filters"].push({
-		"fieldname": "include_default_book_entries",
-		"label": __("Include Default Book Entries"),
-		"fieldtype": "Check",
-		"default": 1
-	});
 
 	let filters = frappe.query_reports["Custom Balance Sheet"]["filters"];
-	frappe.query_reports["Custom Balance Sheet"]["filters"] = toggle(filters, ["filter_based_on","from_fiscal_year","to_fiscal_year","periodicity"],true);
+	frappe.query_reports["Custom Balance Sheet"]["filters"] = toggle(filters, ["filter_based_on","from_fiscal_year","to_fiscal_year","finance_book","periodicity","presentation_currency","cost_center"],true);
+
 
 });
 
