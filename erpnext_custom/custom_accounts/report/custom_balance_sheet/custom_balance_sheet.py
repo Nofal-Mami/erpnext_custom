@@ -7,7 +7,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt, cint
 
-from erpnext.accounts.report.financial_statements import (get_period_list, get_columns,get_accounts,filter_accounts,
+from erpnext.accounts.report.financial_statements import (get_period_list,get_accounts,filter_accounts,
 														  get_appropriate_currency,set_gl_entries_by_account,
 														  accumulate_values_into_parents,accumulate_values_into_parents,
 														  prepare_data,add_total_row,filter_out_zero_value_rows)
@@ -40,6 +40,19 @@ def execute(filters=None):
 	def remove_group_accounts(grouper):
 		grouper = {key: value for (key, value) in grouper.items() if value.is_group == 0}
 
+	def set_parent_value(group, account_):
+		for account in itervalues(group):
+			if account.get('value') is None:
+				values = account_.get('value')
+				keys= account_.get('keys')
+				account['value'] = values
+				account['keys'] = keys
+				# account[keys[0]] = values[0]
+				# account[keys[1]] = values[1]
+			else:
+				break
+
+
 
 	def compute_from_grouper_old(grouper,accounts,period_list):
 		value_current_year = 0
@@ -65,11 +78,14 @@ def execute(filters=None):
 		for	account in accounts.get("debit"):
 			acc = grouper.get(account.get("name"))
 			if acc is not None:
-				value_previous_year_d = acc.get("%s_debit" % period_list[0].get('key'), 0.0)
-				value_previous_year_c = acc.get("%s_credit" % period_list[0].get('key'), 0.0)
 
-				value_current_year_d = acc.get("%s_debit" % period_list[1].get('key'), 0.0)
-				value_current_year_c = acc.get("%s_credit" % period_list[1].get('key'), 0.0)
+				previous_key = period_list[0].get('key')
+				current_key = period_list[1].get('key')
+				value_previous_year_d = acc.get("%s_debit" % previous_key, 0.0)
+				value_previous_year_c = acc.get("%s_credit" % previous_key, 0.0)
+
+				value_current_year_d = acc.get("%s_debit" % current_key, 0.0)
+				value_current_year_c = acc.get("%s_credit" % current_key, 0.0)
 
 				diff_value_previous_year = value_previous_year_d - value_previous_year_c
 				diff_value_current_year = value_current_year_d - value_current_year_c
@@ -83,11 +99,13 @@ def execute(filters=None):
 		for	account in accounts.get("credit"):
 			acc = grouper.get(account.get("name"))
 			if acc is not None:
-				value_previous_year_d = acc.get("%s_debit" % period_list[0].get('key'), 0.0)
-				value_previous_year_c = acc.get("%s_credit" % period_list[0].get('key'), 0.0)
+				previous_key = period_list[0].get('key')
+				current_key = period_list[1].get('key')
+				value_previous_year_d = acc.get("%s_debit" % previous_key, 0.0)
+				value_previous_year_c = acc.get("%s_credit" % previous_key, 0.0)
 
-				value_current_year_d = acc.get("%s_debit" % period_list[1].get('key'), 0.0)
-				value_current_year_c = acc.get("%s_credit" % period_list[1].get('key'), 0.0)
+				value_current_year_d = acc.get("%s_debit" % current_key, 0.0)
+				value_current_year_c = acc.get("%s_credit" % current_key, 0.0)
 
 				diff_value_previous_year = value_previous_year_d - value_previous_year_c
 				diff_value_current_year = value_current_year_d - value_current_year_c
@@ -99,7 +117,7 @@ def execute(filters=None):
 					value_current_year += diff_value_current_year
 
 
-		return (value_previous_year,value_current_year)
+		return (value_previous_year,value_current_year,previous_key,current_key)
 
 	period_list = get_period_list(int(filters.to_fiscal_year) - 1, filters.to_fiscal_year,filters.periodicity, company=filters.company)
 
@@ -136,111 +154,118 @@ def execute(filters=None):
 	grouping, group = dict(), None
 
 	indentation = {
-		"H1":2,
-		"H2":3,
-		"H3":4,
-		"H4":4.5,
-		"H5":5,
-		"H6":6,
+		"H1":1.0,
+		"H2":2.0,
+		"H3":3.0,
+		"H4":4.0,
+		"H5":5.0,
+		"H6":6.0,
 	}
-	#
-	# {'account': '1000 - Application of Funds (Assets) - RS', 'parent_account': '', 'indent': 0.0,
-	#  'year_start_date': '2019-01-01', 'year_end_date': '2020-12-31', 'currency': 'NGN', 'include_in_gross': 0,
-	#  'account_type': '', 'is_group': 1, 'opening_balance': 0.0, 'account_name': '1000 - Application of Funds (Assets)',
-	#  'dec_2019': 200000.0, 'dec_2020': 1380010.0, 'has_value': True, 'total': ''}, {
-	# 	'account': '1100-1600 - Current Assets - RS', 'parent_account': '1000 - Application of Funds (Assets) - RS',
-	# 	'indent': 1.0, 'year_start_date': '2019-01-01', 'year_end_date': '2020-12-31', 'currency': 'NGN',
-	# 	'include_in_gross': 0, 'account_type': '', 'is_group': 1, 'opening_balance': 0.0,
-	# 	'account_name': '1100-1600 - Current Assets', 'dec_2019': 200000.0, 'dec_2020': 1380000.0, 'has_value': True,
-	# 	'total': 1580000.0}
-	#
-	for (index, config) in enumerate(configuration.get("financial_report_configuration_item")):
-		# to be sorted by serial number
 
+	for (index, config) in enumerate(configuration.get("financial_report_configuration_item")):
 		group = config.get('label') if config.get('type') == 'H1' or group is None else group
 
 		if config.get('type') == 'H1':
 			grouping[group] = {}
+			parent = config.get('label')
 
-		index_plus  = index+1
+		index_plus = index+1
 		if config.get('accounts') is None:
-			grouping[group].update({
-				"L%s" % index_plus : dict(
+			account_ = dict(
+					account=config.get('label'),
 					tag=config.get('type'),
 					title=config.get('label'),
-					index=indentation.get(config.get('type'))
+					index=indentation.get(config.get('type')),
+					indent=indentation.get(config.get('type')),
+					parent="",
+					is_group=1
 				)
-			})
 
-
+			grouping[group].update({"L%s" % index_plus : account_})
 		elif str(config.get('accounts')).find("L") is not -1:
-			total_previous_year = 0
-			total_current_year = 0
+			total_current_year = total_previous_year = 0
+			key_prev = key_current = ""
 
 			codes = str(config.get('accounts')).split(" ")
 			for code in codes:
 				index_ = int(str(code[2:]))
 				account_at_index = grouping[group].get("L%s" % index_)
+
 				if account_at_index and account_at_index.get('value'):
 					total_previous_year = total_previous_year + account_at_index.get('value')[0]
 					total_current_year = total_current_year +  account_at_index.get('value')[1]
+					key_prev = account_at_index.get('keys')[0]
+					key_current = account_at_index.get('keys')[1]
 
 			account_ = dict(
+				account=config.get('label'),
 				tag=config.get('type'),
 				title=config.get('label'),
 				value=(total_previous_year,total_current_year),
-				index=indentation.get(config.get('type'))
+				index=indentation.get(config.get('type')),
+				keys=(key_prev,key_current),
+				indent=indentation.get(config.get('type')),
+				parent=parent,
+				is_group=1
 			)
 
+			account_[key_prev] = total_previous_year
+			account_[key_current] = total_current_year
+
 			grouping[group].update({"L%s" % index_plus: account_})
+			set_parent_value(grouping[group], account_)
 		else:
+			prev, current, key1, key2 = compute_from_grouper(grouper,get_accounts_matched_account_number(filters.company,
+												config.get('accounts')), period_list)
+
 			account_ = dict(
+				account=config.get('label'),
 				tag=config.get('type'),
 				title=config.get('label'),
 				index=indentation.get(config.get('type')),
-				value = compute_from_grouper(grouper, get_accounts_matched_account_number(filters.company,
-												 config.get('accounts')),period_list)
+				indent=indentation.get(config.get('type')),
+				value=(prev, current),
+				parent=parent,
+				keys=(key1,key2)
 			)
-			grouping[group].update({ "L%s" % index_plus: account_})
 
-	provisional_profit_loss, total_credit = get_provisional_profit_loss(asset, liability, equity,
-		period_list, filters.company, currency)
+			account_[key1]= prev
+			account_[key2] = current
+
+			grouping[group].update({"L%s" % index_plus: account_})
 
 	message, opening_balance = check_opening_balance(asset, liability, equity)
 
-	data = []
-	data.extend(asset or [])
-	data.extend(liability or [])
-	data.extend(equity or [])
-
-	if opening_balance and round(opening_balance , 2) !=0:
-		unclosed ={
-			"account_name": "'" + _("Unclosed Fiscal Years Profit / Loss (Credit)") + "'",
-			"account": "'" + _("Unclosed Fiscal Years Profit / Loss (Credit)") + "'",
-			"warn_if_negative": True,
-			"currency": currency
-		}
-		for period in period_list:
-			unclosed[period.key] = opening_balance
-			if provisional_profit_loss:
-				provisional_profit_loss[period.key] = provisional_profit_loss[period.key] - opening_balance
-
-		unclosed["total"] = opening_balance
-		data.append(unclosed)
-
-	if provisional_profit_loss:
-		data.append(provisional_profit_loss)
-	if total_credit:
-		data.append(total_credit)
-
 	columns = get_columns(filters.periodicity, period_list, filters.accumulated_values, company=filters.company)
 
-	report_summary = get_report_summary(period_list, asset, liability, equity, provisional_profit_loss,
-		total_credit, currency, filters)
+	data = []
+	for a in [list(itervalues(iter)) for iter in itervalues(grouping)]:
+		data.extend(a)
 
-	data.append({ "print_data" : [itervalues(iter)for iter in itervalues(grouping)] })
+	return columns,data, message, None, None
 
-	return columns, data, message, None, report_summary
+
+def get_columns(periodicity, period_list, accumulated_values=1, company=None):
+	columns = [{
+		"fieldname": "account",
+		"label": _("Account"),
+		"fieldtype": "Link",
+		"options": "Account",
+		"width": 300
+	}]
+
+	for period in period_list:
+		columns.append({
+			"fieldname": period.key,
+			"label": period.label,
+			"fieldtype": "Currency",
+			"options": "currency",
+			"width": 150
+		})
+
+
+	return columns
+
 
 def get_provisional_profit_loss(asset, liability, equity, period_list, company, currency=None, consolidated=False):
 	provisional_profit_loss = {}

@@ -21,13 +21,17 @@
 %}
 
 <div style="padding-left: 0.4em">
-	<h3 class="text-center" >{%= __("BILAN") %}</h3>
+	<h3 class="text-center" >BILAN</h3>
 	<p  class="text-center">(Exprime en dinars)</p>
 	<br>
-	{% for(var o=0, l=data[data.length - 1]['print_data']; o < l.length; o++) { %}
-	<table style="margin-bottom: 10em">
-
-		<tr>
+	{% for(var i=0; i < data.length; i++) { %}
+		{%  let row = data[i];  %}
+		{% if (row['tag'] == "H1") { %}
+		{% if (i >= 0) { %}
+		</table>
+    	{% } %}
+		<table style="margin-bottom: 10em">
+			<tr>
 			<td style="vertical-align: center; width: 500px"></td>
 			<td style="vertical-align: center;width: 100px">Notes</td>
 			<td style="vertical-align: center;width: 400px">
@@ -58,12 +62,9 @@
 				<hr/>
 			</td>
 		</tr>
-
-		{%  let group = l[o];  %}
-		{% for(var i=0; i < group.length; i++) { %}
+		{% } %}
 		<tr>
 			<td style="width: 500px">
-				{%  let row = group[i];  %}
 				<{%= row['tag'] %} style='padding-left:calc(20px * {%= row['index'] %} )'>  {%= row['title'] %}</{%= row['tag'] %}>
 
 			</td>
@@ -90,8 +91,5 @@
 			</td>
 		</tr>
 		{% } %}
-	</table>
-	{% } %}
 	<br>
-
 </div>

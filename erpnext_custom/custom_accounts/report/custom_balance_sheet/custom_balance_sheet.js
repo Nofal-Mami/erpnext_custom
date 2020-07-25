@@ -12,9 +12,6 @@ frappe.require("assets/erpnext/js/financial_statements.js", function() {
 	erpnext.utils.add_dimensions('Custom Balance Sheet', 10);
 
 
-
-
-
 	frappe.query_reports["Custom Balance Sheet"].onload =  function(report) {
 		// dropdown for links to other financial statements
 		erpnext.financial_statements.filters = get_filters()
