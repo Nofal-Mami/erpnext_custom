@@ -13,14 +13,14 @@
 	}
 
 	*{
-		font-size:15px;
+		font-size:13px;
 	}
 </style>
 {%
 	let currency =  filters.presentation_currency || erpnext.get_currency(filters.company);
 %}
 
-<div style="padding-left: 0.4em">
+<div style="padding-left: 0.2em">
 	<h3 class="text-center" >BILAN</h3>
 	<p  class="text-center">(Exprime en dinars)</p>
 	<br>
@@ -30,7 +30,7 @@
 		{% if (i >= 0) { %}
 		</table>
     	{% } %}
-		<table style="margin-bottom: 10em">
+		<table style="margin-bottom: 14em">
 			<tr>
 			<td style="vertical-align: center; width: 500px"></td>
 			<td style="vertical-align: center;width: 100px">Notes</td>
@@ -63,6 +63,7 @@
 			</td>
 		</tr>
 		{% } %}
+		{% if (row['tag'] != "H0") { %}
 		<tr>
 			<td style="width: 500px">
 				<{%= row['tag'] %} style='padding-left:calc(30px * {%= row['index'] %} )'>  {%= row['title'] %}</{%= row['tag'] %}>
@@ -89,7 +90,7 @@
 				<hr/>
 				{% } %}
 			</td>
-		</tr>
+		</tr>{% } %}
 		{% } %}
 	<br>
 </div>
