@@ -11,6 +11,26 @@ frappe.require("assets/erpnext/js/financial_statements.js", function() {
 
 	erpnext.utils.add_dimensions('Custom Balance Sheet', 10);
 
+	frappe.query_reports["Custom Balance Sheet"]["formatter"] = function(value, row, column, data, default_formatter) {
+		if (column.fieldname=="account") {
+			column.is_tree = true;
+		}
+
+		value = default_formatter(value, row, column, data);
+
+		if (!data.parent_account) {
+			value = $(`<span>${value}</span>`);
+
+			var $value = $(value).css("font-weight", "bold");
+			if (data.warn_if_negative && data[column.fieldname] < 0) {
+				$value.addClass("text-danger");
+			}
+
+			value = $value.wrap("<p></p>").parent().html();
+		}
+
+		return value;
+	}
 
 	frappe.query_reports["Custom Balance Sheet"].onload =  function(report) {
 		// dropdown for links to other financial statements
