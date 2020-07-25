@@ -244,8 +244,7 @@ def get_columns(periodicity, period_list, accumulated_values=1, company=None):
     columns = [{
         "fieldname": "account",
         "label": _("Account"),
-        "fieldtype": "Link",
-        "options": "Account",
+        "fieldtype": "Data",
         "width": 300
     }]
 
