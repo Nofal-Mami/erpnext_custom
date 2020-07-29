@@ -16,8 +16,8 @@ How to setup app on frappe bench
 1. Pull app code from git repository using command below<br>
 `bench get-app https://github.com/maisonarmani/erpnext_custom erpnext_custom`
 
-1. Install app
-`bench install-app erpnext_custom --site sitename`
+1. Install app<br>
+`bench --site sitename install-app erpnext_custom`
 
 1. Run a bench migrate with the command below<br>
 `bench migrate --site site-name` or `bench migrate` for all sites 
@@ -32,7 +32,5 @@ H1: Group headings<br>
   &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;H3/HO: Net / Group seperation <br>
  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
  H4: Group Item
-
-
-Different line
+ 
 Have fun !!!
